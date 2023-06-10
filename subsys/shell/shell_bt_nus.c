@@ -13,7 +13,7 @@ SHELL_BT_NUS_DEFINE(shell_transport_bt_nus,
 		    CONFIG_SHELL_BT_NUS_TX_RING_BUFFER_SIZE,
 		    CONFIG_SHELL_BT_NUS_RX_RING_BUFFER_SIZE);
 
-SHELL_DEFINE(shell_bt_nus, "bt_nus:~$ ", &shell_transport_bt_nus,
+SHELL_DEFINE(shell_bt_nus, "$", &shell_transport_bt_nus,
 	     CONFIG_SHELL_BT_NUS_LOG_MESSAGE_QUEUE_SIZE,
 	     CONFIG_SHELL_BT_NUS_LOG_MESSAGE_QUEUE_TIMEOUT,
 	     SHELL_FLAG_OLF_CRLF);
