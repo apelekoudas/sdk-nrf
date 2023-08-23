@@ -183,6 +183,9 @@ void shell_bt_nus_enable(struct bt_conn *conn)
 
 		__ASSERT_NO_MSG(err == 0);
 		is_init = true;
+	} else {
+		ring_buf_reset(bt_nus->tx_ringbuf); //TP added to re-enable tx/log/shell in case of ..
+		tx_callback(NULL);					//TP .. abnormal BLE termination during tx_try()
 	}
 }
 
