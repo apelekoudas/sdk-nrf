@@ -205,14 +205,28 @@ if (CONFIG_SOC_SERIES_NRF91X OR CONFIG_SOC_NRF5340_CPUAPP)
     PLACEMENT start_to_end
     )
 endif()
-add_region(
-  NAME flash_primary
-  SIZE ${flash_size}
-  BASE ${CONFIG_FLASH_BASE_ADDRESS}
-  PLACEMENT complex
-  DEVICE flash_controller
-  DEFAULT_DRIVER_KCONFIG CONFIG_SOC_FLASH_NRF
-  )
+
+if (CONFIG_SOC_FAMILY_STM32)
+  message("Adding STM32 primary partition @${CONFIG_FLASH_BASE_ADDRESS}")
+  add_region(
+    NAME flash_primary
+    SIZE ${flash_size}
+    BASE ${CONFIG_FLASH_BASE_ADDRESS}
+    PLACEMENT complex
+    DEVICE flash
+    DEFAULT_DRIVER_KCONFIG CONFIG_SOC_FLASH_STM32
+    )
+else()
+  message("Adding nRF primary partition @${CONFIG_FLASH_BASE_ADDRESS}")
+  add_region(
+    NAME flash_primary
+    SIZE ${flash_size}
+    BASE ${CONFIG_FLASH_BASE_ADDRESS}
+    PLACEMENT complex
+    DEVICE flash_controller
+    DEFAULT_DRIVER_KCONFIG CONFIG_SOC_FLASH_NRF
+    )
+endif()
 
 dt_chosen(ext_flash_dev PROPERTY nordic,pm-ext-flash)
 if (DEFINED ext_flash_dev)

@@ -26,6 +26,9 @@
 #include <bluetooth/services/nus.h>
 
 #include <dk_buttons_and_leds.h>
+#include <zephyr/pm/pm.h>
+#include <zephyr/pm/device.h>
+#include <zephyr/pm/policy.h>
 
 #include <zephyr/settings/settings.h>
 
@@ -135,11 +138,11 @@ static void uart_cb(const struct device *dev, struct uart_event *evt, void *user
 			return;
 		}
 
-		if ((evt->data.rx.buf[buf->len - 1] == '\n') ||
-		    (evt->data.rx.buf[buf->len - 1] == '\r')) {
+		// if ((evt->data.rx.buf[buf->len - 1] == '\n') ||
+		//     (evt->data.rx.buf[buf->len - 1] == '\r')) {
 			disable_req = true;
 			uart_rx_disable(uart);
-		}
+		// }
 
 		break;
 
@@ -157,7 +160,7 @@ static void uart_cb(const struct device *dev, struct uart_event *evt, void *user
 		}
 
 		uart_rx_enable(uart, buf->data, sizeof(buf->data),
-			       UART_WAIT_FOR_RX);
+				UART_WAIT_FOR_RX);
 
 		break;
 
@@ -233,9 +236,9 @@ static bool uart_test_async_api(const struct device *dev)
 static int uart_init(void)
 {
 	int err;
-	int pos;
+	// int pos;
 	struct uart_data_t *rx;
-	struct uart_data_t *tx;
+	// struct uart_data_t *tx;
 
 	if (!device_is_ready(uart)) {
 		return -ENODEV;
@@ -295,39 +298,39 @@ static int uart_init(void)
 		}
 	}
 
-	tx = k_malloc(sizeof(*tx));
+	// tx = k_malloc(sizeof(*tx));
 
-	if (tx) {
-		pos = snprintf(tx->data, sizeof(tx->data),
-			       "Starting Nordic UART service example\r\n");
+	// if (tx) {
+	// 	pos = snprintf(tx->data, sizeof(tx->data),
+	// 		       "Starting Nordic UART service example\r\n");
 
-		if ((pos < 0) || (pos >= sizeof(tx->data))) {
-			k_free(rx);
-			k_free(tx);
-			LOG_ERR("snprintf returned %d", pos);
-			return -ENOMEM;
-		}
+	// 	if ((pos < 0) || (pos >= sizeof(tx->data))) {
+	// 		k_free(rx);
+	// 		k_free(tx);
+	// 		LOG_ERR("snprintf returned %d", pos);
+	// 		return -ENOMEM;
+	// 	}
 
-		tx->len = pos;
-	} else {
-		k_free(rx);
-		return -ENOMEM;
-	}
+	// 	tx->len = pos;
+	// } else {
+	// 	k_free(rx);
+	// 	return -ENOMEM;
+	// }
 
-	err = uart_tx(uart, tx->data, tx->len, SYS_FOREVER_MS);
-	if (err) {
-		k_free(rx);
-		k_free(tx);
-		LOG_ERR("Cannot display welcome message (err: %d)", err);
-		return err;
-	}
+	// err = uart_tx(uart, tx->data, tx->len, SYS_FOREVER_MS);
+	// if (err) {
+	// 	k_free(rx);
+	// 	k_free(tx);
+	// 	LOG_ERR("Cannot display welcome message (err: %d)", err);
+	// 	return err;
+	// }
 
-	err = uart_rx_enable(uart, rx->data, sizeof(rx->data), 50);
-	if (err) {
-		LOG_ERR("Cannot enable uart reception (err: %d)", err);
-		/* Free the rx buffer only because the tx buffer will be handled in the callback */
-		k_free(rx);
-	}
+	// err = uart_rx_enable(uart, rx->data, sizeof(rx->data), 50);
+	// if (err) {
+	// 	LOG_ERR("Cannot enable uart reception (err: %d)", err);
+	// 	/* Free the rx buffer only because the tx buffer will be handled in the callback */
+	// 	k_free(rx);
+	// }
 
 	return err;
 }
@@ -346,7 +349,17 @@ static void connected(struct bt_conn *conn, uint8_t err)
 
 	current_conn = bt_conn_ref(conn);
 
-	dk_set_led_on(CON_STATUS_LED);
+	// dk_set_led_on(CON_STATUS_LED);
+	pm_device_action_run(uart, PM_DEVICE_ACTION_RESUME);	// resume UART	
+
+	struct uart_data_t *rx;
+	rx = k_malloc(sizeof(*rx));
+	if (rx) {
+		rx->len = 0;
+	} else {
+		return;
+	}	
+	uart_rx_enable(uart, rx->data, sizeof(rx->data), 50);
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
@@ -365,8 +378,12 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	if (current_conn) {
 		bt_conn_unref(current_conn);
 		current_conn = NULL;
-		dk_set_led_off(CON_STATUS_LED);
+		// dk_set_led_off(CON_STATUS_LED);
 	}
+
+	uart_rx_disable(uart);
+	k_msleep(100);
+	pm_device_action_run(uart, PM_DEVICE_ACTION_SUSPEND);	// suspend UART until we need it
 }
 
 #ifdef CONFIG_BT_NUS_SECURITY_ENABLED
@@ -514,7 +531,7 @@ static struct bt_nus_cb nus_cb = {
 
 void error(void)
 {
-	dk_set_leds_state(DK_ALL_LEDS_MSK, DK_NO_LEDS_MSK);
+	// dk_set_leds_state(DK_ALL_LEDS_MSK, DK_NO_LEDS_MSK);
 
 	while (true) {
 		/* Spin for ever */
@@ -555,24 +572,24 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 
 static void configure_gpio(void)
 {
-	int err;
+	// int err;
 
 #ifdef CONFIG_BT_NUS_SECURITY_ENABLED
-	err = dk_buttons_init(button_changed);
-	if (err) {
-		LOG_ERR("Cannot init buttons (err: %d)", err);
-	}
+	// err = dk_buttons_init(button_changed);
+	// if (err) {
+	// 	LOG_ERR("Cannot init buttons (err: %d)", err);
+	// }
 #endif /* CONFIG_BT_NUS_SECURITY_ENABLED */
 
-	err = dk_leds_init();
-	if (err) {
-		LOG_ERR("Cannot init LEDs (err: %d)", err);
-	}
+	// err = dk_leds_init();
+	// if (err) {
+	// 	LOG_ERR("Cannot init LEDs (err: %d)", err);
+	// }
 }
 
 int main(void)
 {
-	int blink_status = 0;
+	// int blink_status = 0;
 	int err = 0;
 
 	configure_gpio();
@@ -622,10 +639,11 @@ int main(void)
 		return 0;
 	}
 
-	for (;;) {
-		dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);
-		k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
-	}
+	// for (;;) {
+	// 	dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);
+	// 	k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
+	// }
+	return 0;
 }
 
 void ble_write_thread(void)

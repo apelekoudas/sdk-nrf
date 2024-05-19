@@ -185,11 +185,13 @@ config PM_OVERRIDE_EXTERNAL_DRIVER_CHECK
 config PM_SRAM_BASE
 	hex
 	default $(dt_node_reg_addr_hex,/soc/memory@21000000) if SOC_NRF5340_CPUNET
+	default $(dt_node_reg_addr_hex,/memory@20000000) if SOC_FAMILY_STM32
 	default $(dt_node_reg_addr_hex,/soc/memory@20000000)
 
 config PM_SRAM_SIZE
 	hex
 	default $(dt_node_reg_size_hex,/soc/memory@21000000) if SOC_NRF5340_CPUNET
+	default $(dt_node_reg_size_hex,/memory@20000000) if SOC_FAMILY_STM32
 	default $(dt_node_reg_size_hex,/soc/memory@20000000)
 
 endmenu # Partition Manager
