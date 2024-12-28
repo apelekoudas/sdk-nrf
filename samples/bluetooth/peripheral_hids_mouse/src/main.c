@@ -34,7 +34,7 @@
 #define BASE_USB_HID_SPEC_VERSION   0x0101
 
 /* Number of pixels by which the cursor is moved when a button is pushed. */
-#define MOVEMENT_SPEED              5
+#define MOVEMENT_SPEED              1
 /* Number of input reports in this application. */
 #define INPUT_REPORT_COUNT          3
 /* Length of Mouse Input Report containing button data. */
@@ -272,6 +272,7 @@ static void connected(struct bt_conn *conn, uint8_t err)
 	}
 
 	printk("Connected %s\n", addr);
+	dk_set_led_on(DK_LED4);
 
 	err = bt_hids_connected(&hids_obj, conn);
 
@@ -306,6 +307,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	for (size_t i = 0; i < CONFIG_BT_HIDS_MAX_CLIENT_COUNT; i++) {
 		if (conn_mode[i].conn == conn) {
 			conn_mode[i].conn = NULL;
+			dk_set_led_off(DK_LED4);
 			break;
 		}
 	}
@@ -735,6 +737,7 @@ void configure_buttons(void)
 	int err;
 
 	err = dk_buttons_init(button_changed);
+	err |= dk_leds_init ();
 	if (err) {
 		printk("Cannot init buttons (err: %d)\n", err);
 	}
@@ -747,11 +750,13 @@ static void bas_notify(void)
 
 	battery_level--;
 
-	if (!battery_level) {
+	if (battery_level < 20) {
 		battery_level = 100U;
 	}
 
 	bt_bas_set_battery_level(battery_level);
+	
+	dk_set_led(DK_LED1, battery_level % 2);
 }
 
 
@@ -801,8 +806,11 @@ int main(void)
 	configure_buttons();
 
 	while (1) {
-		k_sleep(K_SECONDS(1));
+		k_sleep(K_SECONDS(280));
 		/* Battery level simulation */
 		bas_notify();
+
+		/* Simulate mouse-move and pairing-accept button press */
+		button_changed(/*KEY_PAIRING_ACCEPT | */KEY_UP_MASK, true);
 	}
 }
