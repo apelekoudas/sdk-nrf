@@ -805,12 +805,17 @@ int main(void)
 
 	configure_buttons();
 
+	uint16_t cycleCount=0;
+
 	while (1) {
 		k_sleep(K_SECONDS(280));
-		/* Battery level simulation */
-		bas_notify();
+		
+		if(cycleCount++ % 25) {	// skip a cycle every 2 hours
+			/* Battery level simulation */
+			bas_notify();
 
-		/* Simulate mouse-move and pairing-accept button press */
-		button_changed(/*KEY_PAIRING_ACCEPT | */KEY_UP_MASK, true);
+			/* Simulate mouse-move and pairing-accept button press */
+			button_changed(/*KEY_PAIRING_ACCEPT | */KEY_UP_MASK, true);
+		}
 	}
 }
