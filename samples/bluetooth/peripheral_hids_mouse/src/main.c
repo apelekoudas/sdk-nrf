@@ -676,7 +676,7 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 {
 	bool data_to_send = false;
 	struct mouse_pos pos;
-	uint32_t buttons = button_state & has_changed;
+	uint32_t buttons = button_state && has_changed;
 
 	memset(&pos, 0, sizeof(struct mouse_pos));
 
@@ -810,7 +810,7 @@ int main(void)
 	while (1) {
 		k_sleep(K_SECONDS(280));
 		
-		if(cycleCount++ % 25) {	// skip a cycle every 2 hours
+		if(++cycleCount % 25) {	// skip a cycle every 2 hours
 			/* Battery level simulation */
 			bas_notify();
 
