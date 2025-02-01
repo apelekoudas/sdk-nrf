@@ -810,7 +810,9 @@ int main(void)
 	while (1) {
 		k_sleep(K_SECONDS(280));
 		
-		if(++cycleCount % 25) {	// skip a cycle every 2 hours
+		printk("Cycle %d of 12", cycleCount);
+
+		if(++cycleCount % 10) {	// skip a cycle every 45 mins
 			/* Battery level simulation */
 			bas_notify();
 
