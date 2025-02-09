@@ -74,6 +74,9 @@ struct uart_data_t {
 static K_FIFO_DEFINE(fifo_uart_tx_data);
 static K_FIFO_DEFINE(fifo_uart_rx_data);
 
+bool let_uart_run = false;	// TP: flag to inhibit uart_rx_enable(), as we just disconnected and we are about to sleep.
+uint16_t tx_mtu;			// TP: store MTU in case we need to split BLE tx packet;
+
 static const struct bt_data ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
 	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
@@ -130,7 +133,7 @@ static void uart_cb(const struct device *dev, struct uart_event *evt, void *user
 		break;
 
 	case UART_RX_RDY:
-		LOG_DBG("UART_RX_RDY");
+		LOG_DBG("UART_RX_RDY %db, %p, %doffs", evt->data.rx.len, (void *)evt->data.rx.buf, evt->data.rx.offset);
 		buf = CONTAINER_OF(evt->data.rx.buf, struct uart_data_t, data);
 		buf->len += evt->data.rx.len;
 
@@ -140,9 +143,10 @@ static void uart_cb(const struct device *dev, struct uart_event *evt, void *user
 
 		// if ((evt->data.rx.buf[buf->len - 1] == '\n') ||
 		//     (evt->data.rx.buf[buf->len - 1] == '\r')) {
+		if(buf->len != UART_BUF_SIZE) {	// if not a buffer full event then stop and give us the buffer, oterhwise the buffer will be released anyway.
 			disable_req = true;
 			uart_rx_disable(uart);
-		// }
+		}
 
 		break;
 
@@ -150,22 +154,23 @@ static void uart_cb(const struct device *dev, struct uart_event *evt, void *user
 		LOG_DBG("UART_RX_DISABLED");
 		disable_req = false;
 
-		buf = k_malloc(sizeof(*buf));
-		if (buf) {
-			buf->len = 0;
-		} else {
-			LOG_WRN("Not able to allocate UART receive buffer");
-			k_work_reschedule(&uart_work, UART_WAIT_FOR_BUF_DELAY);
-			return;
-		}
+		if(let_uart_run) {
+			buf = k_malloc(sizeof(*buf));
+			if (buf) {
+				buf->len = 0;
+			} else {
+				LOG_WRN("Not able to allocate UART receive buffer");
+				k_work_reschedule(&uart_work, UART_WAIT_FOR_BUF_DELAY);
+				return;
+			}
 
-		uart_rx_enable(uart, buf->data, sizeof(buf->data),
-				UART_WAIT_FOR_RX);
+			uart_rx_enable(uart, buf->data, sizeof(buf->data), UART_WAIT_FOR_RX);
+		}
 
 		break;
 
 	case UART_RX_BUF_REQUEST:
-		LOG_DBG("UART_RX_BUF_REQUEST");
+		LOG_DBG("UART_RX_BUF_REQUEST %d", sizeof(buf->data));
 		buf = k_malloc(sizeof(*buf));
 		if (buf) {
 			buf->len = 0;
@@ -177,13 +182,15 @@ static void uart_cb(const struct device *dev, struct uart_event *evt, void *user
 		break;
 
 	case UART_RX_BUF_RELEASED:
-		LOG_DBG("UART_RX_BUF_RELEASED");
 		buf = CONTAINER_OF(evt->data.rx_buf.buf, struct uart_data_t,
 				   data);
 
+		LOG_DBG("UART_RX_BUF_RELEASED %db, %p", buf->len, (void *)evt->data.rx_buf.buf);
 		if (buf->len > 0) {
 			k_fifo_put(&fifo_uart_rx_data, buf);
+			LOG_HEXDUMP_DBG(buf->data, buf->len, "UART_RX_BUF_RELEASED");
 		} else {
+			LOG_DBG("UART_RX_BUF_RELEASED zero legth");
 			k_free(buf);
 		}
 
@@ -222,7 +229,9 @@ static void uart_work_handler(struct k_work *item)
 		return;
 	}
 
-	uart_rx_enable(uart, buf->data, sizeof(buf->data), UART_WAIT_FOR_RX);
+	if(let_uart_run) {
+		uart_rx_enable(uart, buf->data, sizeof(buf->data), UART_WAIT_FOR_RX);
+	}
 }
 
 static bool uart_test_async_api(const struct device *dev)
@@ -237,7 +246,7 @@ static int uart_init(void)
 {
 	int err;
 	// int pos;
-	struct uart_data_t *rx;
+	// struct uart_data_t *rx;
 	// struct uart_data_t *tx;
 
 	if (!device_is_ready(uart)) {
@@ -252,12 +261,12 @@ static int uart_init(void)
 		}
 	}
 
-	rx = k_malloc(sizeof(*rx));
-	if (rx) {
-		rx->len = 0;
-	} else {
-		return -ENOMEM;
-	}
+	// rx = k_malloc(sizeof(*rx));
+	// if (rx) {
+	// 	rx->len = 0;
+	// } else {
+	// 	return -ENOMEM;
+	// }
 
 	k_work_init_delayable(&uart_work, uart_work_handler);
 
@@ -270,7 +279,7 @@ static int uart_init(void)
 
 	err = uart_callback_set(uart, uart_cb, NULL);
 	if (err) {
-		k_free(rx);
+		// k_free(rx);
 		LOG_ERR("Cannot initialize UART callback");
 		return err;
 	}
@@ -359,7 +368,9 @@ static void connected(struct bt_conn *conn, uint8_t err)
 	} else {
 		return;
 	}	
-	uart_rx_enable(uart, rx->data, sizeof(rx->data), 50);
+
+	let_uart_run = true;
+	uart_rx_enable(uart, rx->data, sizeof(rx->data), UART_WAIT_FOR_RX);
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
@@ -381,8 +392,9 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 		// dk_set_led_off(CON_STATUS_LED);
 	}
 
+	let_uart_run=false;	// shutdown RX
 	uart_rx_disable(uart);
-	k_msleep(100);
+	k_msleep(10); // let the events trigger
 	pm_device_action_run(uart, PM_DEVICE_ACTION_SUSPEND);	// suspend UART until we need it
 }
 
@@ -498,7 +510,8 @@ static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
 		}
 
 		/* Keep the last byte of TX buffer for potential LF char. */
-		size_t tx_data_size = sizeof(tx->data) - 1;
+		// size_t tx_data_size = sizeof(tx->data) - 1;
+		size_t tx_data_size = sizeof(tx->data);
 
 		if ((len - pos) > tx_data_size) {
 			tx->len = tx_data_size;
@@ -513,10 +526,10 @@ static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
 		/* Append the LF character when the CR character triggered
 		 * transmission from the peer.
 		 */
-		if ((pos == len) && (data[len - 1] == '\r')) {
-			tx->data[tx->len] = '\n';
-			tx->len++;
-		}
+		// if ((pos == len) && (data[len - 1] == '\r')) {
+		// 	tx->data[tx->len] = '\n';
+		// 	tx->len++;
+		// }
 
 		err = uart_tx(uart, tx->data, tx->len, SYS_FOREVER_MS);
 		if (err) {
@@ -587,6 +600,14 @@ static void configure_gpio(void)
 	// }
 }
 
+void mtu_updated(struct bt_conn *conn, uint16_t tx, uint16_t rx)
+{
+	LOG_INF("Updated MTU: TX: %d RX: %d bytes\n", tx, rx);
+	tx_mtu = tx;
+}
+
+static struct bt_gatt_cb gatt_callbacks = {.att_mtu_updated = mtu_updated};
+
 int main(void)
 {
 	// int blink_status = 0;
@@ -619,6 +640,8 @@ int main(void)
 	}
 
 	LOG_INF("Bluetooth initialized");
+
+	bt_gatt_cb_register(&gatt_callbacks);
 
 	k_sem_give(&ble_init_ok);
 
@@ -656,8 +679,22 @@ void ble_write_thread(void)
 		struct uart_data_t *buf = k_fifo_get(&fifo_uart_rx_data,
 						     K_FOREVER);
 
-		if (bt_nus_send(NULL, buf->data, buf->len)) {
-			LOG_WRN("Failed to send data over BLE connection");
+		// Split uart rx packet, if needed.
+		uint8_t *dp = buf->data;
+		uint16_t sz;
+
+		while(buf->len) {
+			if(buf->len > (tx_mtu - 4)) {
+				sz = tx_mtu - 4;
+			} else {
+				sz = buf->len;
+			}
+			
+			if (bt_nus_send(NULL, dp, sz)) {
+				LOG_WRN("Failed to send data over BLE connection");
+			}
+			dp += sz;
+			buf->len -= sz;
 		}
 
 		k_free(buf);
