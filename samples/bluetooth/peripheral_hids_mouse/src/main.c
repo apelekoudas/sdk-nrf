@@ -812,7 +812,7 @@ int main(void)
 		
 		printk("Cycle %d of 12", cycleCount);
 
-		if(++cycleCount % 10) {	// skip a cycle every 45 mins
+		if(++cycleCount % 6) {	// skip a cycle every 28 mins
 			/* Battery level simulation */
 			bas_notify();
 
