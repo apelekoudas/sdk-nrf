@@ -22,7 +22,8 @@ manifest:
       url-base: https://github.com/nrfconnect
     # Third-party repository sources:
     - name: zephyrproject
-      url-base: https://github.com/zephyrproject-rtos
+      #TP# url-base: https://github.com/zephyrproject-rtos
+      url-base: https://github.com/apelekoudas
     - name: throwtheswitch
       url-base: https://github.com/ThrowTheSwitch
     - name: dragoon
@@ -64,8 +65,10 @@ manifest:
     # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/introduction/index.html
     # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/guides/modules.html
     - name: zephyr
+      remote: zephyrproject
       repo-path: sdk-zephyr
-      revision: ncs-v3.1.1
+      revision: 3_0_1_nena_branch
+      #TP# revision: ncs-v3.1.1
       import:
         # In addition to the zephyr repository itself, NCS also
         # imports the contents of zephyr/west.yml at the above
