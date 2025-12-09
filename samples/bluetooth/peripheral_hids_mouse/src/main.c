@@ -806,6 +806,8 @@ int main(void)
 	configure_buttons();
 
 	uint16_t cycleCount=0;
+	
+	dk_set_led(DK_LED1, 1);	// set yellow led ON
 
 	while (1) {
 		k_sleep(K_SECONDS(280));
