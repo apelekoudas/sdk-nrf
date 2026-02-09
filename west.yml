@@ -22,7 +22,7 @@ manifest:
       url-base: https://github.com/nrfconnect
     # Third-party repository sources:
     - name: zephyrproject
-      #TP# url-base: https://github.com/zephyrproject-rtos
+      # url-base: https://github.com/zephyrproject-rtos
       url-base: https://github.com/apelekoudas
     - name: throwtheswitch
       url-base: https://github.com/ThrowTheSwitch
@@ -67,8 +67,8 @@ manifest:
     - name: zephyr
       remote: zephyrproject
       repo-path: sdk-zephyr
-      revision: 3_0_1_nena_branch
-      #TP# revision: ncs-v3.1.1
+      revision: 3_1_1_nena_branch
+      # revision: ncs-v3.1.1
       import:
         # In addition to the zephyr repository itself, NCS also
         # imports the contents of zephyr/west.yml at the above
