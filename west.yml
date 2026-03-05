@@ -58,6 +58,13 @@ manifest:
   # For 'userdata' fields in the projects area, please refer to:
   # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/dm_code_base.html
   projects:
+    #TP added 02/2026 #
+    - name: usp_zephyr
+      path: modules/usp_zephyr
+      url: https://github.com/apelekoudas/usp_zephyr.git
+      revision: 3_1_1_nena_branch
+      import: true
+
 
     # The Zephyr RTOS fork in the NCS, along with the subset of its
     # modules which NCS imports directly.
