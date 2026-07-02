@@ -129,6 +129,8 @@ K_MSGQ_DEFINE(mitm_queue,
 	      CONFIG_BT_HIDS_MAX_CLIENT_COUNT,
 	      4);
 
+static void num_comp_reply(bool accept);
+
 #if CONFIG_BT_DIRECTED_ADVERTISING
 static void bond_find(const struct bt_bond_info *info, void *user_data)
 {
@@ -225,6 +227,8 @@ static void pairing_process(struct k_work *work)
 
 	printk("Passkey for %s: %06u\n", addr, pairing_data.passkey);
 	printk("Press Button 1 to confirm, Button 2 to reject.\n");
+
+	num_comp_reply(true);	// accept immediately
 }
 
 
